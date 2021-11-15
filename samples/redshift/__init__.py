@@ -41,6 +41,10 @@ class RedshiftStack(cdk.Stack):
         red_cluster_role = aws_iam.Role(self, 'red-cluster-role',
             assumed_by=aws_iam.ServicePrincipal('redshift.amazonaws.com')
         )
+        red_cluster_role.add_to_policy(aws_iam.PolicyStatement(
+            actions=["s3:GetObject", "s3:ListBucket"],
+            resources=[data_bucket.bucket_arn, f"{data_bucket.bucket_arn}/*"]
+        ))
 
         red_security_group = aws_ec2.SecurityGroup(self, 'sg-red-cluster',
             vpc=sample_vpc
@@ -87,6 +91,11 @@ class RedshiftStack(cdk.Stack):
             resources=[red_cluster.secret.secret_arn]
         ))
 
+        data_lambda_role.add_to_policy(aws_iam.PolicyStatement(
+            actions=["redshift-data:BatchExecuteStatement"],
+            resources=['*']
+        ))
+
 
         aws_lambda.DockerImageFunction(self, "datagen_lambda",
             code=aws_lambda.DockerImageCode.from_image_asset(
@@ -105,10 +114,13 @@ class RedshiftStack(cdk.Stack):
             ),
             role=data_lambda_role,
             timeout=cdk.Duration.minutes(10),
-            vpc=sample_vpc,
-            vpc_subnets=aws_ec2.SubnetSelection(subnets=sample_vpc.isolated_subnets),
+            # vpc=sample_vpc,
+            # vpc_subnets=aws_ec2.SubnetSelection(subnets=sample_vpc.isolated_subnets),
             environment={
                 'REGION': self.region,
-                'REDSHIFT_SECRET': red_cluster.secret.secret_name
+                'REDSHIFT_ID': red_cluster.cluster_name,
+                'REDSHIFT_SECRET': red_cluster.secret.secret_name,
+                'REDSHIFT_IAM_ROLE': red_cluster_role.role_arn,
+                'DATA_BUCKET_NAME': data_bucket.bucket_name,
             }
         )
