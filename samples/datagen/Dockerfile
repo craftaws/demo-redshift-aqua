@@ -16,7 +16,7 @@ RUN make
 RUN mkdir -p ${LAMBDA_RUNTIME_DIR}/dbgen
 WORKDIR ${LAMBDA_RUNTIME_DIR}/dbgen
 
-RUN /opt/TPC-H_Tools_v3.0.0/dbgen/dbgen -b /opt/TPC-H_Tools_v3.0.0/dbgen/dists.dss -s 1
+RUN /opt/TPC-H_Tools_v3.0.0/dbgen/dbgen -b /opt/TPC-H_Tools_v3.0.0/dbgen/dists.dss -s 3
 
 RUN  pip3 install boto3 --target "${LAMBDA_TASK_ROOT}"
 

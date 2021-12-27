@@ -1,24 +1,27 @@
 'Cloudformation Stack for Redshift Aqua Demo'
-from aws_cdk import core as cdk
+from constructs import Construct
 from aws_cdk import (
+    Stack,
+    RemovalPolicy,
+    Duration,
     aws_iam,
     aws_ec2,
-    aws_redshift,
     aws_s3,
     aws_lambda,
 )
+import aws_cdk.aws_redshift_alpha as aws_redshift_alpha
 
 VPC_CIDR="10.10.0.0/16"
 
-class RedshiftStack(cdk.Stack):
+class RedshiftStack(Stack):
     'Cloudformation Stack for Redshit Aqua demo'
 
-    def __init__(self, scope: cdk.Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         data_bucket = aws_s3.Bucket(self, "aqua-demo-data",
             auto_delete_objects=True,
-            removal_policy=cdk.RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY
         )
 
         sample_vpc = aws_ec2.Vpc(self, "redshift-vpc",
@@ -27,7 +30,7 @@ class RedshiftStack(cdk.Stack):
             subnet_configuration=[
                 aws_ec2.SubnetConfiguration(
                     name= 'isolated',
-                    subnet_type=aws_ec2.SubnetType.ISOLATED,
+                    subnet_type=aws_ec2.SubnetType.PRIVATE_ISOLATED,
                     cidr_mask=24
                 )
             ]
@@ -59,15 +62,15 @@ class RedshiftStack(cdk.Stack):
                 )
         )        
 
-        red_cluster = aws_redshift.Cluster(self, 'demo-aqua',
-            master_user=aws_redshift.Login(master_username="admin_user"),
+        red_cluster = aws_redshift_alpha.Cluster(self, 'demo-aqua',
+            master_user=aws_redshift_alpha.Login(master_username="admin_user"),
             vpc=sample_vpc,
-            vpc_subnets=aws_ec2.SubnetSelection(subnet_type=aws_ec2.SubnetType.ISOLATED),
+            vpc_subnets=aws_ec2.SubnetSelection(subnet_type=aws_ec2.SubnetType.PRIVATE_ISOLATED),
             security_groups=[red_security_group],
-            removal_policy=cdk.RemovalPolicy.DESTROY,
+            removal_policy=RemovalPolicy.DESTROY,
             # AQUA is available on clusters with ra3.xlplus, ra3.4xlarge, and ra3.16xlarge node types.
             # https://docs.aws.amazon.com/redshift/latest/mgmt/managing-cluster-aqua.html
-            node_type=aws_redshift.NodeType.RA3_4XLARGE,
+            node_type=aws_redshift_alpha.NodeType.RA3_4XLARGE,
             number_of_nodes=2,
             roles=[red_cluster_role]
         )
@@ -102,7 +105,7 @@ class RedshiftStack(cdk.Stack):
                 directory="samples/datagen",
             ),
             role=data_lambda_role,
-            timeout=cdk.Duration.minutes(10),
+            timeout=Duration.minutes(10),
             environment={
                 'data_bucket_name': data_bucket.bucket_name,
             }
@@ -113,7 +116,7 @@ class RedshiftStack(cdk.Stack):
                 directory="samples/datacpy",
             ),
             role=data_lambda_role,
-            timeout=cdk.Duration.minutes(10),
+            timeout=Duration.minutes(10),
             # vpc=sample_vpc,
             # vpc_subnets=aws_ec2.SubnetSelection(subnets=sample_vpc.isolated_subnets),
             environment={

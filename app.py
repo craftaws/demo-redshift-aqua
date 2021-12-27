@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from aws_cdk import core as cdk
+from aws_cdk import App
 from samples.redshift import RedshiftStack
 
-app = cdk.App()
+app = App()
 RedshiftStack(app, "DemoAqua")
 
 app.synth()
